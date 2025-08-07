@@ -31,12 +31,12 @@ export default function NotFound() {
             Retrieve Messages
           </Link>
 
-          <Link
+{/*           <Link
             href="/decrypt-5338"
             className="block w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium py-3 px-4 sm:px-6 rounded-lg transition-colors text-center text-sm sm:text-base"
           >
             Decrypt Messages
-          </Link>
+          </Link> */}
           
         </div>
       </div>
