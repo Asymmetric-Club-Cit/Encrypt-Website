@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { caesarEncrypt, generateSubmissionId, getTodayKey } from './crypto';
+import { marsCrypto } from './mars-crypto';
 
 export interface Message {
   id?: string;
@@ -23,6 +24,7 @@ export interface Message {
   claimed: boolean;
   claimedBy?: string;
   claimedAt?: Timestamp;
+  encryptionType?: 'mars'; // Only Mars encryption supported
 }
 
 export interface UserTurns {
@@ -33,10 +35,13 @@ export interface UserTurns {
   maxTurns: number;
 }
 
-// Submit a new message
-export async function submitMessage(text: string): Promise<string> {
+// Submit a new message with Mars encryption (default)
+export async function submitMessage(text: string, useMarsEncryption: boolean = true): Promise<string> {
   const submissionId = generateSubmissionId();
-  const encryptedText = caesarEncrypt(text);
+  
+  // Always use Mars encryption unless explicitly disabled
+  const encryptedText = await marsCrypto.encrypt(text);
+  const encryptionType = 'mars';
   
   const message: Omit<Message, 'id'> = {
     originalText: text,
@@ -44,6 +49,7 @@ export async function submitMessage(text: string): Promise<string> {
     submissionId,
     timestamp: Timestamp.now(),
     claimed: false,
+    encryptionType,
   };
 
   await addDoc(collection(db, 'messages'), message);

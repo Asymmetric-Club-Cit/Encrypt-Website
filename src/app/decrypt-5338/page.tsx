@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { getUserClaimedMessages } from '@/lib/firestore';
-import { caesarDecrypt } from '@/lib/crypto';
+import { marsCrypto } from '@/lib/mars-crypto';
 import Link from 'next/link';
+import ClockCollection from '@/components/ClockCollection';
 
 export default function DecryptPage() {
   const { user, signInWithGoogle } = useAuth();
@@ -13,6 +14,7 @@ export default function DecryptPage() {
   const [decryptedText, setDecryptedText] = useState('');
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
   const [mode, setMode] = useState<'auto' | 'manual'>('auto');
+  const [isDecrypting, setIsDecrypting] = useState(false);
 
   useEffect(() => {
     if (user?.uid) {
@@ -31,24 +33,43 @@ export default function DecryptPage() {
     }
   };
 
-  const handleAutoDecrypt = (message: any) => {
+  const handleAutoDecrypt = async (message: any) => {
     setSelectedMessage(message);
-    const decrypted = caesarDecrypt(message.encryptedText);
-    setDecryptedText(decrypted);
+    setIsDecrypting(true);
+    
+    try {
+      const decrypted = await marsCrypto.decrypt(message.encryptedText);
+      setDecryptedText(decrypted);
+    } catch (error) {
+      console.error('Decryption failed:', error);
+      setDecryptedText('Failed to decrypt message. Please check if the message is valid.');
+    } finally {
+      setIsDecrypting(false);
+    }
   };
 
-  const handleManualDecrypt = () => {
+  const handleManualDecrypt = async () => {
     if (!manualInput.trim()) return;
     
-    const decrypted = caesarDecrypt(manualInput.trim());
-    setDecryptedText(decrypted);
+    setIsDecrypting(true);
     setSelectedMessage(null);
+    
+    try {
+      const decrypted = await marsCrypto.decrypt(manualInput.trim());
+      setDecryptedText(decrypted);
+    } catch (error) {
+      console.error('Decryption failed:', error);
+      setDecryptedText('Failed to decrypt message. Please check if the message is valid.');
+    } finally {
+      setIsDecrypting(false);
+    }
   };
 
   const resetDecryption = () => {
     setDecryptedText('');
     setSelectedMessage(null);
     setManualInput('');
+    setIsDecrypting(false);
   };
 
   const downloadDecrypted = () => {
@@ -80,23 +101,25 @@ Retrieved on: ${selectedMessage.claimedAt?.toDate?.()?.toLocaleString() || 'Unkn
 
   if (decryptedText) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-900 to-teal-900 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="min-h-screen bg-black/95 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative">
+        {/* Background clocks */}
+        
+        <div className="max-w-md w-full bg-white/10 backdrop-blur-md rounded-lg p-6 sm:p-8 border border-white/20 shadow-2xl relative z-10">
+          <div className="text-center mb-4 sm:mb-6">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg">
+              <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 12H9l-4 4-3-3 4-4V7a6 6 0 017.743-5.743L15 3l2 2 2-2 1.998 1.998L19 7z" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Message Decrypted!</h1>
-            <p className="text-emerald-200">Here's the original secret message</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">Message Decrypted!</h1>
+            <p className="text-gray-300 text-sm sm:text-base">Here's the original secret message</p>
           </div>
 
           {selectedMessage && (
-            <div className="bg-yellow-500/20 border-2 border-yellow-400 rounded-lg p-4 mb-4 text-center">
-              <p className="text-yellow-200 text-sm font-medium mb-2">Your Submission ID:</p>
-              <div className="bg-black/40 rounded-lg p-3 border border-yellow-400/50">
-                <p className="text-yellow-100 font-bold text-lg font-mono tracking-wider">
+            <div className="bg-yellow-500/20 border border-yellow-400/50 rounded-lg p-3 sm:p-4 mb-4 text-center backdrop-blur-sm">
+              <p className="text-yellow-200 text-xs sm:text-sm font-medium mb-2">Your Submission ID:</p>
+              <div className="bg-black/40 rounded-lg p-2 sm:p-3 border border-yellow-400/50">
+                <p className="text-yellow-100 font-bold text-sm sm:text-lg font-mono tracking-wider break-all">
                   {selectedMessage.submissionId}
                 </p>
               </div>
@@ -104,17 +127,17 @@ Retrieved on: ${selectedMessage.claimedAt?.toDate?.()?.toLocaleString() || 'Unkn
             </div>
           )}
 
-          <div className="bg-white/10 rounded-lg p-6 mb-6 text-center">
-            <p className="text-sm text-emerald-200 mb-3">Decrypted Message:</p>
-            <div className="bg-black/30 rounded-lg p-4 text-white text-lg leading-relaxed break-words">
+          <div className="bg-white/10 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 text-center backdrop-blur-sm">
+            <p className="text-xs sm:text-sm text-gray-300 mb-3">Decrypted Message:</p>
+            <div className="bg-black/30 rounded-lg p-3 sm:p-4 text-white text-sm sm:text-lg leading-relaxed break-words">
               "{decryptedText}"
             </div>
           </div>
 
-          <div className="space-y-3 mb-6">
+          <div className="space-y-3 mb-4 sm:mb-6">
             <button
               onClick={downloadDecrypted}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium py-3 px-4 sm:px-6 rounded-lg transition-colors text-sm sm:text-base"
             >
               Download Decrypted Message
             </button>
@@ -129,13 +152,13 @@ Retrieved on: ${selectedMessage.claimedAt?.toDate?.()?.toLocaleString() || 'Unkn
           <div className="text-center space-y-2">
             <Link
               href="/"
-              className="block text-emerald-300 hover:text-emerald-200 text-sm font-medium transition-colors"
+              className="block text-purple-300 hover:text-purple-200 text-xs sm:text-sm font-medium transition-colors"
             >
               Submit a new message
             </Link>
             <Link
               href="/retrieve"
-              className="block text-emerald-300 hover:text-emerald-200 text-sm font-medium transition-colors"
+              className="block text-blue-300 hover:text-blue-200 text-xs sm:text-sm font-medium transition-colors"
             >
               Retrieve more messages
             </Link>
@@ -146,36 +169,38 @@ Retrieved on: ${selectedMessage.claimedAt?.toDate?.()?.toLocaleString() || 'Unkn
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-900 to-teal-900 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="min-h-screen bg-black/95 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative">
+      {/* Background clocks */}
+      
+      <div className="max-w-md w-full bg-white/10 backdrop-blur-md rounded-lg p-6 sm:p-8 border border-white/20 shadow-2xl relative z-10">
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg">
+            <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 12H9l-4 4-3-3 4-4V7a6 6 0 017.743-5.743L15 3l2 2 2-2 1.998 1.998L19 7z" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Decrypt Messages</h1>
-          <p className="text-emerald-200">Reveal the original content of encrypted messages</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Decrypt</h1>
+          <p className="text-gray-300 text-sm sm:text-base">Reveal the original content of encrypted messages</p>
         </div>
 
-        <div className="mb-6">
-          <div className="flex bg-black/20 rounded-lg p-1">
+        <div className="mb-4 sm:mb-6">
+          <div className="flex bg-black/20 rounded-lg p-1 backdrop-blur-sm">
             <button
               onClick={() => setMode('auto')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              className={`flex-1 py-2 px-3 sm:px-4 rounded-md text-xs sm:text-sm font-medium transition-colors ${
                 mode === 'auto'
-                  ? 'bg-green-600 text-white'
-                  : 'text-emerald-200 hover:text-white'
+                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
+                  : 'text-gray-300 hover:text-white'
               }`}
             >
               Your Messages
             </button>
             <button
               onClick={() => setMode('manual')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+              className={`flex-1 py-2 px-3 sm:px-4 rounded-md text-xs sm:text-sm font-medium transition-colors ${
                 mode === 'manual'
-                  ? 'bg-green-600 text-white'
-                  : 'text-emerald-200 hover:text-white'
+                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white'
+                  : 'text-gray-300 hover:text-white'
               }`}
             >
               Manual Input
@@ -186,11 +211,11 @@ Retrieved on: ${selectedMessage.claimedAt?.toDate?.()?.toLocaleString() || 'Unkn
         {mode === 'auto' ? (
           <div>
             {!user ? (
-              <div className="bg-orange-500/20 border border-orange-500/50 rounded-lg p-4 mb-6 text-center">
-                <p className="text-orange-200 mb-3">Sign in to access your retrieved messages</p>
+              <div className="bg-orange-500/20 border border-orange-500/50 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 text-center backdrop-blur-sm">
+                <p className="text-orange-200 mb-3 text-xs sm:text-sm">Sign in to access your retrieved messages</p>
                 <button
                   onClick={signInWithGoogle}
-                  className="bg-white hover:bg-gray-100 text-gray-900 font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 mx-auto"
+                  className="bg-white hover:bg-gray-100 text-gray-900 font-medium py-2 px-3 sm:px-4 rounded-lg transition-colors flex items-center justify-center gap-2 mx-auto text-xs sm:text-sm"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -202,18 +227,18 @@ Retrieved on: ${selectedMessage.claimedAt?.toDate?.()?.toLocaleString() || 'Unkn
                 </button>
               </div>
             ) : userMessages.length === 0 ? (
-              <div className="bg-blue-500/20 border border-blue-500/50 rounded-lg p-4 text-center">
-                <p className="text-blue-200 mb-3">No retrieved messages found</p>
+              <div className="bg-blue-500/20 border border-blue-500/50 rounded-lg p-3 sm:p-4 text-center backdrop-blur-sm">
+                <p className="text-blue-200 mb-3 text-xs sm:text-sm">No retrieved messages found</p>
                 <Link
                   href="/retrieve"
-                  className="text-blue-300 hover:text-blue-200 font-medium transition-colors"
+                  className="text-blue-300 hover:text-blue-200 font-medium transition-colors text-xs sm:text-sm"
                 >
                   Retrieve messages first →
                 </Link>
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-sm text-emerald-200 mb-3">Your retrieved messages:</p>
+                <p className="text-xs sm:text-sm text-gray-300 mb-3">Your retrieved messages:</p>
                 {userMessages.map((message) => (
                   <div
                     key={message.id}
@@ -233,12 +258,12 @@ Retrieved on: ${selectedMessage.claimedAt?.toDate?.()?.toLocaleString() || 'Unkn
                         Retrieved: {message.claimedAt?.toDate?.()?.toLocaleDateString() || 'Unknown'}
                       </span>
                     </div>
-                    <div className="text-sm text-white/80 font-mono break-all bg-black/20 rounded p-2 mb-2">
+                    <div className="text-xs sm:text-sm text-white/80 font-mono break-all bg-black/20 rounded p-2 mb-2 backdrop-blur-sm">
                       {message.encryptedText.substring(0, 80)}
                       {message.encryptedText.length > 80 && '...'}
                     </div>
-                    <div className="text-xs text-emerald-300 text-center font-medium">
-                      🔓 Click to decrypt
+                    <div className="text-xs text-green-300 text-center font-medium">
+                      Click to decrypt
                     </div>
                   </div>
                 ))}
@@ -247,8 +272,8 @@ Retrieved on: ${selectedMessage.claimedAt?.toDate?.()?.toLocaleString() || 'Unkn
           </div>
         ) : (
           <div>
-            <div className="mb-6">
-              <label htmlFor="manual-input" className="block text-sm font-medium text-emerald-200 mb-2">
+            <div className="mb-4 sm:mb-6">
+              <label htmlFor="manual-input" className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                 Paste Encrypted Message
               </label>
               <textarea
@@ -256,30 +281,30 @@ Retrieved on: ${selectedMessage.claimedAt?.toDate?.()?.toLocaleString() || 'Unkn
                 value={manualInput}
                 onChange={(e) => setManualInput(e.target.value)}
                 placeholder="Paste the encrypted message here..."
-                className="w-full h-32 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-emerald-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none font-mono"
+                className="w-full h-32 px-3 sm:px-4 py-2 sm:py-3 bg-black/20 border border-white/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none font-mono backdrop-blur-sm text-xs sm:text-sm"
               />
             </div>
 
             <button
               onClick={handleManualDecrypt}
-              disabled={!manualInput.trim()}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 disabled:cursor-not-allowed"
+              disabled={!manualInput.trim() || isDecrypting}
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-500 disabled:to-gray-600 text-white font-medium py-3 px-4 sm:px-6 rounded-lg transition-all duration-200 disabled:cursor-not-allowed text-sm sm:text-base"
             >
-              Decrypt Message
+              {isDecrypting ? '🔓 Decrypting...' : '🔴 Decrypt'}
             </button>
           </div>
         )}
 
-        <div className="mt-8 pt-6 border-t border-white/20 text-center space-y-2">
+        <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-white/20 text-center space-y-2">
           <Link
             href="/"
-            className="block text-emerald-300 hover:text-emerald-200 text-sm font-medium transition-colors"
+            className="block text-purple-300 hover:text-purple-200 text-xs sm:text-sm font-medium transition-colors"
           >
             ← Submit a message
           </Link>
           <Link
             href="/retrieve"
-            className="block text-emerald-300 hover:text-emerald-200 text-sm font-medium transition-colors"
+            className="block text-blue-300 hover:text-blue-200 text-xs sm:text-sm font-medium transition-colors"
           >
             Retrieve messages →
           </Link>
