@@ -241,12 +241,12 @@ From: Anonymous sender 💕`;
                 Retrieve Another Message
               </button>
             )}
-{/*             <Link
+            <Link
               href="/decrypt-5338"
               className="block w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-medium py-3 px-4 sm:px-6 rounded-lg transition-colors text-center text-sm sm:text-base"
             >
               Decrypt
-            </Link> */}
+            </Link>
           </div>
 
           <div className="mt-4 sm:mt-6 text-center">
@@ -315,12 +315,12 @@ From: Anonymous sender 💕`;
           >
             Submit a Message
           </Link>
-{/*           <Link
+          <Link
             href="/decrypt-5338"
             className="block w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-medium py-3 px-4 sm:px-6 rounded-lg transition-colors text-center text-sm sm:text-base"
           >
             Decrypt Messages
-          </Link> */}
+          </Link>
         </div>
 
         <div className="mt-8 pt-6 border-t border-white/20 text-center">

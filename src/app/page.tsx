@@ -182,14 +182,14 @@ export default function Home() {
           </Link>
         </div>
 
-{/*         <div className="mt-4 sm:mt-6 text-center">
+        <div className="mt-4 sm:mt-6 text-center">
           <Link
             href="/decrypt-5338"
             className="text-red-300 hover:text-red-200 text-xs sm:text-sm font-medium transition-colors"
           >
             Have an encrypted message to decrypt? →
           </Link>
-        </div> */}
+        </div>
       </div>
     </div>
   );
